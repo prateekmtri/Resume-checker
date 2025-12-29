@@ -1,183 +1,177 @@
-# 📄 Resume Scanner - AI-Powered Resume Analysis
+📄 Resume Scanner – AI-Powered Resume Analysis Platform
 
-An intelligent resume scanning and analysis application built with **FastAPI**, **LangChain**, and **Groq LLM**. This project uses RAG (Retrieval-Augmented Generation) to analyze resumes and provide detailed insights about skills, experiences, and qualifications.
+An intelligent AI-powered Resume Scanner built with FastAPI, LangChain, Groq LLM, and a modern Next.js frontend.
+This system uses Retrieval-Augmented Generation (RAG) to deeply analyze resumes and provide insights on skills, experience, and job fit.
 
-## 🚀 Features
+Designed for students, job seekers, and recruiters to quickly understand resume quality using AI.
 
-- **PDF Resume Upload**: Upload resume PDFs for analysis
-- **AI-Powered Analysis**: Uses Groq's LLaMA 3.3 70B model for intelligent insights
-- **Vector Search**: ChromaDB for efficient document retrieval
-- **Embeddings**: HuggingFace sentence-transformers for semantic search
-- **RESTful API**: FastAPI backend with CORS support
-- **Modern Frontend**: Clean and responsive user interface
+🚀 Live Capabilities
 
-## 🛠️ Tech Stack
+✔ Upload Resume (PDF)
+✔ AI-based Skill Extraction
+✔ Experience & Profile Summary
+✔ Smart Resume Understanding using RAG
+✔ Fast Response using Groq LLaMA 3.3
+✔ Modern UI built with Next.js
 
-### Backend
-- **FastAPI** - Modern Python web framework
-- **LangChain** - LLM application framework
-- **Groq** - Fast LLM inference
-- **ChromaDB** - Vector database
-- **PyPDF** - PDF processing
-- **Sentence Transformers** - Text embeddings
+🧠 How It Works
 
-### Frontend
-- **HTML/CSS/JavaScript**
-- Responsive design
+User uploads a resume
 
-## 📋 Prerequisites
+Resume is converted into text
 
-- Python 3.11+
-- Groq API Key ([Get it here](https://console.groq.com))
+Text is split into chunks
 
-## 🔧 Installation
+Chunks are converted into embeddings
 
-### 1. Clone the repository
+Stored inside ChromaDB
 
-```bash
-git clone https://github.com/prateekmtri/Resume-Scanner.git
-cd Resume-Scanner
-```
+Query is sent to Groq LLM
 
-### 2. Create virtual environment
+LLM retrieves relevant chunks
 
-```bash
-python -m venv venv
-source venv/Scripts/activate  # On Windows
-# source venv/bin/activate    # On Mac/Linux
-```
+AI generates detailed resume feedback
 
-### 3. Install dependencies
+🛠 Tech Stack
+Backend
 
-```bash
-cd backend
-pip install -r requirements.txt
-```
+FastAPI
 
-### 4. Set up environment variables
+LangChain
 
-Create a `.env` file in the `backend` folder:
+Groq LLM
 
-```env
-GROQ_API_KEY=your_groq_api_key_here
-```
+ChromaDB
 
-## 🚀 Running the Application
+PyPDF
 
-### Start Backend Server
+HuggingFace Embeddings
 
-```bash
-cd backend
-python -m uvicorn main:app --reload
-```
+Frontend
 
-The API will be available at `http://127.0.0.1:8000`
+Next.js
 
-### Open Frontend
+Tailwind CSS
 
-Open `frontend/index.html` in your browser or use a local server:
+JavaScript
 
-```bash
-cd frontend
-python -m http.server 8080
-```
+📸 Frontend Screenshots
 
-Then visit `http://localhost:8080`
+Add your screenshots inside the repository folder: frontend/screenshots/
 
-## 📁 Project Structure
+frontend/screenshots/
+ ├── home.png
+ ├── upload.png
+ └── result.png
 
-```
-Gen_AI_Project/
+
+Then they will appear here 👇
+
+Home Page
+
+Resume Upload
+
+AI Result
+
+📦 Project Structure
+Resume-Scanner/
 │
 ├── backend/
-│   ├── langchain_pipeline.py    # Core RAG pipeline
-│   ├── main.py                  # FastAPI application
-│   ├── requirements.txt         # Python dependencies
-│   ├── .env                     # Environment variables (create this)
-│   ├── temp/                    # Temporary file storage
-│   ├── chroma_db/              # Vector database storage
-│   └── utils/                   # Utility functions
+│   ├── langchain_pipeline.py
+│   ├── main.py
+│   ├── requirements.txt
+│   ├── .env
+│   ├── chroma_db/
+│   └── utils/
 │
-├── frontend/
-│   ├── index.html              # Main HTML file
-│   ├── styles/                 # CSS files
-│   └── scripts/                # JavaScript files
+├── frontend/   (Next.js)
+│   ├── pages/
+│   ├── components/
+│   ├── styles/
+│   └── screenshots/
 │
-├── venv/                       # Virtual environment (ignored)
-└── README.md                   # This file
-```
+├── README.md
+└── .gitignore
 
-## 🔑 API Endpoints
+⚙️ Installation
+1️⃣ Clone Repo
+git clone https://github.com/prateekmtri/Resume-Scanner.git
+cd Resume-Scanner
 
-### POST `/upload/`
-Upload a PDF resume for analysis
+2️⃣ Backend Setup
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
 
-**Request:**
-- Method: `POST`
-- Content-Type: `multipart/form-data`
-- Body: `file` (PDF)
 
-**Response:**
-```json
+Create .env file:
+
+GROQ_API_KEY=your_api_key_here
+
+
+Run server:
+
+uvicorn main:app --reload
+
+
+Backend runs at:
+
+http://127.0.0.1:8000
+
+3️⃣ Frontend Setup (Next.js)
+cd frontend
+npm install
+npm run dev
+
+
+Open:
+
+http://localhost:3000
+
+🔑 API Endpoint
+POST /upload/
+
+Uploads resume and returns AI feedback.
+
+Response
+
 {
-  "feedback": "Analysis of the resume including skills, experiences, etc."
+  "feedback": "Your resume has strong skills in React, FastAPI, and backend development..."
 }
-```
 
-## 🧪 Example Usage
+🧠 AI Models Used
+Component	Model
+LLM	llama-3.3-70b-versatile (Groq)
+Embeddings	all-MiniLM-L6-v2
+Vector DB	ChromaDB
+🌟 Why This Project is Special
 
-```python
-import requests
+Uses RAG architecture
 
-url = "http://127.0.0.1:8000/upload/"
-files = {"file": open("resume.pdf", "rb")}
-response = requests.post(url, files=files)
-print(response.json())
-```
+Uses Groq ultra-fast inference
 
-## 🔒 Environment Variables
+Real-world AI product
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GROQ_API_KEY` | Your Groq API key | Yes |
+Fully Full-Stack AI Application
 
-## 📝 Model Information
+Resume-grade portfolio project
 
-Currently using:
-- **LLM**: `llama-3.3-70b-versatile` (Groq)
-- **Embeddings**: `sentence-transformers/all-MiniLM-L6-v2`
-- **Vector DB**: ChromaDB
+This is a strong internship-level AI SaaS project 💼
 
-## 🤝 Contributing
+👤 Author
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Prateek Mani Tripathi
+MERN + AI Developer
+GitHub: https://github.com/prateekmtri
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Email: prateek1tri2@gmail.com
 
-## 📄 License
+🤝 Contributing
 
-This project is open source and available under the [MIT License](LICENSE).
+Pull requests are welcome.
 
-## 👤 Author
+⭐ Support
 
-**Prateek Mittal**
-- GitHub: [@prateekmtri](https://github.com/prateekmtri)
-- Email: prateek1tri2@gmail.com
-
-## 🙏 Acknowledgments
-
-- LangChain for the amazing framework
-- Groq for fast LLM inference
-- HuggingFace for embeddings models
-
-## 📞 Support
-
-For support, email prateek1tri2@gmail.com or open an issue in the repository.
-
----
-
-⭐ If you found this project helpful, please give it a star!
+If you like this project, please give it a star ⭐
+It motivates me to build more AI tools.
