@@ -9,3 +9,4 @@ pypdf
 sentence-transformers
 langchain-groq==0.2.0
 python-dotenv
+groq 
