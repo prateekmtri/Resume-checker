@@ -1,16 +1,25 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+import os
 from dotenv import load_dotenv
-
 load_dotenv()
 
-# Import routers
-from resume_scanner import router as resume_router
+from langchain_pipeline import (
+    load_resume,
+    split_docs,
+    create_embeddings,
+    store_documents,
+    analyze_resume
+)
+
+# 👇 Email router import
 from email_writer import router as email_router
 
-app = FastAPI(title="Gen AI Project - Multi Tool API")
+app = FastAPI()
 
-# CORS setup
+# 👇 Email API add
+app.include_router(email_router, prefix="/email", tags=["Email Writer"])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,20 +27,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(resume_router, prefix="/resume", tags=["Resume Scanner"])
-app.include_router(email_router, prefix="/email", tags=["Email Writer"])
+@app.post("/upload/")
+async def upload_resume(file: UploadFile = File(...)):
+    file_location = f"temp/{file.filename}"
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
 
-@app.get("/")
-def home():
-    return {
-        "message": "Gen AI Project API",
-        "endpoints": {
-            "resume_scanner": "/resume/upload",
-            "email_writer": "/email/generate"
-        }
-    }
+    docs = load_resume(file_location)
+    chunks = split_docs(docs)
+    embeddings = create_embeddings()
+    vectordb = store_documents(chunks, embeddings)
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    result = analyze_resume("What are the skills and experiences?", vectordb)
+    return {"feedback": result}
