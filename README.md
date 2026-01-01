@@ -1,10 +1,10 @@
-# 📄 Resume Scanner – AI-Powered Resume Analysis Platform
+# 📄 JobAI – AI-Powered Resume & Email Assistant Platform
 
 <div align="center">
 
-![Resume Scanner Banner](https://via.placeholder.com/1200x300/0f172a/3b82f6?text=Resume+Scanner+AI)
+![JobAI Banner](https://via.placeholder.com/1200x300/0f172a/3b82f6?text=JobAI+-+Your+Smart+Career+Assistant)
 
-**An intelligent AI-powered Resume Scanner built with FastAPI, LangChain, Groq LLM, and Next.js**
+**An intelligent AI-powered platform with Resume Scanner and Professional Email Writer built with FastAPI, LangChain, Groq LLM, and Next.js**
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
@@ -19,35 +19,57 @@
 
 ## 🌟 Overview
 
-Resume Scanner uses **Retrieval-Augmented Generation (RAG)** to deeply analyze resumes and provide actionable insights on skills, experience, and job fit. Built for students, job seekers, and recruiters to leverage AI for instant resume feedback.
+JobAI is a comprehensive career assistance platform that combines **Resume Scanner** and **Email Writer** tools. Using **Retrieval-Augmented Generation (RAG)** and advanced AI, it provides intelligent resume analysis and generates professional job application emails. Perfect for students, job seekers, and recruiters looking to leverage AI for career advancement.
 
 ### ✨ Key Features
 
+#### 📄 Resume Scanner
 - 📤 **Upload Resume** - Support for PDF format
 - 🤖 **AI-Powered Analysis** - Intelligent skill extraction and profiling
 - 📊 **Experience Summary** - Automated career progression analysis
 - 🎯 **RAG Architecture** - Context-aware understanding using vector embeddings
-- ⚡ **Lightning Fast** - Powered by Groq LLaMA 3.3 (70B parameters)
+- 💡 **Actionable Feedback** - Personalized recommendations for improvement
+
+#### ✉️ Email Writer
+- ✍️ **Professional Email Generation** - AI-crafted job application emails
+- 🎨 **Customizable Tone** - Choose between Professional, Friendly, or Formal
+- 📏 **Adjustable Length** - Short, Medium, or Long format options
+- ⚡ **Instant Generation** - Get perfectly formatted emails in seconds
+- 🎯 **Purpose-Driven** - Tailored for job applications, follow-ups, and HR communication
+
+#### ⚡ Core Technology
+- 🚀 **Lightning Fast** - Powered by Groq LLaMA 3.3 (70B parameters)
 - 🎨 **Modern UI** - Beautiful Next.js interface with Tailwind CSS
+- 🔒 **Secure & Private** - Your data stays protected
 
 ---
 
 ## 🏗️ Architecture
 
 ```mermaid
-graph LR
-    A[User] -->|Upload PDF| B[Next.js Frontend]
+graph TB
+    A[User] -->|Upload Resume/Write Email| B[Next.js Frontend]
     B -->|API Request| C[FastAPI Backend]
+    
+    subgraph Resume Scanner Flow
     C -->|Extract Text| D[PyPDF]
     D -->|Chunk Text| E[LangChain]
     E -->|Generate Embeddings| F[HuggingFace]
     F -->|Store Vectors| G[ChromaDB]
     G -->|Retrieve Context| H[Groq LLM]
-    H -->|AI Feedback| B
+    end
+    
+    subgraph Email Writer Flow
+    C -->|Process Request| I[Email Generator]
+    I -->|AI Prompt| H
+    end
+    
+    H -->|AI Response| B
 ```
 
 ### 🔄 How It Works
 
+#### Resume Scanner Flow
 1. **Upload** → User uploads resume (PDF format)
 2. **Extract** → Resume converted to text using PyPDF
 3. **Chunk** → Text split into semantic chunks
@@ -56,6 +78,13 @@ graph LR
 6. **Query** → User query sent to Groq LLM
 7. **Retrieve** → Relevant chunks retrieved from vector DB
 8. **Generate** → AI generates detailed feedback
+
+#### Email Writer Flow
+1. **Input** → User provides email purpose and position details
+2. **Customize** → Select tone (Professional/Friendly/Formal) and length
+3. **Generate** → AI crafts personalized professional email
+4. **Review** → User reviews and copies the generated email
+5. **Send** → Ready-to-send professional job application email
 
 ---
 
@@ -72,6 +101,7 @@ graph LR
 - **Vector Database:** ChromaDB
 - **Embeddings:** HuggingFace (all-MiniLM-L6-v2)
 - **PDF Parser:** PyPDF
+- **Email Generation:** Custom AI Pipeline
 
 </td>
 <td valign="top" width="50%">
@@ -82,6 +112,7 @@ graph LR
 - **Language:** JavaScript/TypeScript
 - **HTTP Client:** Axios
 - **UI Components:** Custom React Components
+- **State Management:** React Hooks
 
 </td>
 </tr>
@@ -96,11 +127,14 @@ graph LR
 ### 🏠 Home Page
 ![Home Page](./frontend/public/screenshots/home.png)
 
-### 📤 Resume Upload
+### 📤 Resume Scanner - Upload Interface
 ![Upload Interface](./frontend/public/screenshots/upload.png)
 
-### 🤖 AI Analysis Results
+### 🤖 Resume Scanner - AI Analysis Results
 ![Results Page](./frontend/public/screenshots/result.png)
+
+### ✉️ Email Writer - Professional Email Generation
+![Email Writer](./frontend/public/screenshots/email-writer.png)
 
 </div>
 
@@ -109,10 +143,11 @@ graph LR
 ## 📦 Project Structure
 
 ```
-Resume-Scanner/
+JobAI/
 ├── backend/
 │   ├── main.py                    # FastAPI application
 │   ├── langchain_pipeline.py      # RAG pipeline logic
+│   ├── email_generator.py         # Email generation module
 │   ├── requirements.txt           # Python dependencies
 │   ├── .env                       # Environment variables
 │   ├── chroma_db/                 # Vector database storage
@@ -121,8 +156,13 @@ Resume-Scanner/
 ├── frontend/
 │   ├── pages/                     # Next.js pages
 │   │   ├── index.js              # Home page
+│   │   ├── resume-scanner.js     # Resume Scanner page
+│   │   ├── email-writer.js       # Email Writer page
 │   │   └── api/                  # API routes
 │   ├── components/               # React components
+│   │   ├── ResumeUpload.js
+│   │   ├── EmailForm.js
+│   │   └── ResultDisplay.js
 │   ├── styles/                   # CSS/Tailwind styles
 │   └── public/
 │       └── screenshots/          # Project screenshots
@@ -203,7 +243,9 @@ Frontend runs at: `http://localhost:3000` 🎉
 
 ## 🔌 API Documentation
 
-### Upload Resume Endpoint
+### Resume Scanner Endpoints
+
+#### Upload Resume
 
 **POST** `/upload/`
 
@@ -224,6 +266,38 @@ Upload a PDF resume and receive AI-generated feedback.
 }
 ```
 
+### Email Writer Endpoints
+
+#### Generate Email
+
+**POST** `/generate-email/`
+
+Generate a professional job application email based on user input.
+
+**Request:**
+- Method: `POST`
+- Content-Type: `application/json`
+- Body:
+```json
+{
+  "purpose": "Job application for Senior Software Engineer position",
+  "position": "Senior Software Engineer",
+  "company": "Tech Corp",
+  "tone": "professional",
+  "length": "medium"
+}
+```
+
+**Response:**
+
+```json
+{
+  "email": "Subject: Application for Senior Software Engineer Position\n\nDear Hiring Manager,\n\nI am writing to express my strong interest in the Senior Software Engineer position at Tech Corp...",
+  "status": "success",
+  "timestamp": "2025-01-15T10:35:00Z"
+}
+```
+
 **Interactive API Docs:** Visit `http://127.0.0.1:8000/docs` for Swagger UI
 
 ---
@@ -232,23 +306,61 @@ Upload a PDF resume and receive AI-generated feedback.
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **LLM** | Groq LLaMA 3.3 (70B) | Resume analysis & feedback generation |
+| **LLM** | Groq LLaMA 3.3 (70B) | Resume analysis & email generation |
 | **Embeddings** | all-MiniLM-L6-v2 | Text vectorization |
 | **Vector DB** | ChromaDB | Efficient similarity search |
 | **Framework** | LangChain | RAG pipeline orchestration |
+| **Email AI** | Custom Prompt Engineering | Professional email crafting |
+
+---
+
+## 🎯 Use Cases
+
+### For Job Seekers
+- ✅ Get instant AI feedback on your resume
+- ✅ Generate professional job application emails
+- ✅ Save time on email composition
+- ✅ Improve your chances of getting noticed
+
+### For Students
+- ✅ Learn what makes a strong resume
+- ✅ Practice professional communication
+- ✅ Prepare for internship applications
+- ✅ Build career readiness skills
+
+### For Recruiters
+- ✅ Quickly assess candidate resumes
+- ✅ Generate professional responses
+- ✅ Streamline communication workflow
+- ✅ Maintain consistent messaging
 
 ---
 
 ## 🌟 Why This Project Stands Out
 
+✅ **Dual AI Tools** - Complete career assistance in one platform  
 ✅ **Production-Ready RAG Architecture** - Implements industry-standard vector search  
 ✅ **Ultra-Fast Inference** - Groq provides 10x faster responses than traditional LLMs  
 ✅ **Full-Stack AI Application** - Complete end-to-end implementation  
 ✅ **Real-World Use Case** - Solves actual problems for job seekers  
 ✅ **Portfolio-Grade Project** - Demonstrates advanced AI/ML skills  
-✅ **Scalable Design** - Built with modern, maintainable architecture
+✅ **Scalable Design** - Built with modern, maintainable architecture  
+✅ **Professional UI/UX** - Polished interface with excellent user experience
 
 **Perfect for demonstrating to recruiters and building your AI portfolio!** 💼
+
+---
+
+## 🚀 Future Enhancements
+
+- [ ] Resume template suggestions
+- [ ] Multi-language email support
+- [ ] Email history and templates
+- [ ] LinkedIn profile optimization
+- [ ] Cover letter generation
+- [ ] Interview preparation assistant
+- [ ] Job matching recommendations
+- [ ] Resume ATS optimization score
 
 ---
 
@@ -277,7 +389,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 🌐 GitHub: [@prateekmtri](https://github.com/prateekmtri)
 - 📧 Email: prateek1tri2@gmail.com
+- 💼 LinkedIn: [Connect with me](https://linkedin.com/in/prateekmtri)
 
+---
+
+## 🙏 Acknowledgments
+
+- [Groq](https://groq.com/) for lightning-fast LLM inference
+- [LangChain](https://www.langchain.com/) for RAG framework
+- [FastAPI](https://fastapi.tiangolo.com/) for robust backend
+- [Next.js](https://nextjs.org/) for excellent frontend framework
 
 ---
 
@@ -289,5 +410,7 @@ It motivates me to build more AI-powered tools!
 <div align="center">
 
 ### Made with ❤️ and AI
+
+**JobAI - Empowering Your Career Journey with Artificial Intelligence**
 
 </div>
