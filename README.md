@@ -80,7 +80,7 @@ graph TB
 8. **Generate** → AI generates detailed feedback
 
 #### Email Writer Flow
-1. **Input** → User provides email purpose and position details
+1. **Input** → User provides email topic and preferences
 2. **Customize** → Select tone (Professional/Friendly/Formal) and length
 3. **Generate** → AI crafts personalized professional email
 4. **Review** → User reviews and copies the generated email
@@ -102,6 +102,7 @@ graph TB
 - **Embeddings:** HuggingFace (all-MiniLM-L6-v2)
 - **PDF Parser:** PyPDF
 - **Email Generation:** Custom AI Pipeline
+- **Architecture:** Clean layered architecture (API, Services, Models, Schemas)
 
 </td>
 <td valign="top" width="50%">
@@ -110,7 +111,7 @@ graph TB
 - **Framework:** Next.js 14
 - **Styling:** Tailwind CSS
 - **Language:** JavaScript/TypeScript
-- **HTTP Client:** Axios
+- **HTTP Client:** Fetch API
 - **UI Components:** Custom React Components
 - **State Management:** React Hooks
 
@@ -145,27 +146,59 @@ graph TB
 ```
 JobAI/
 ├── backend/
-│   ├── main.py                    # FastAPI application
-│   ├── langchain_pipeline.py      # RAG pipeline logic
-│   ├── email_generator.py         # Email generation module
-│   ├── requirements.txt           # Python dependencies
-│   ├── .env                       # Environment variables
-│   ├── chroma_db/                 # Vector database storage
-│   └── utils/                     # Helper functions
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── __init__.py
+│   │   │   └── v1/
+│   │   │       ├── __init__.py
+│   │   │       └── endpoints/
+│   │   │           ├── __init__.py
+│   │   │           ├── resume.py         # Resume upload endpoint
+│   │   │           └── email.py          # Email generation endpoint
+│   │   │
+│   │   ├── core/                         # Core configurations
+│   │   │   └── __init__.py
+│   │   │
+│   │   ├── db/                           # Database utilities
+│   │   │   └── __init__.py
+│   │   │
+│   │   ├── langchain/                    # LangChain modules
+│   │   │   ├── __init__.py
+│   │   │   └── resume_analyzer.py        # RAG pipeline logic
+│   │   │
+│   │   ├── models/                       # Database models
+│   │   │   └── __init__.py
+│   │   │
+│   │   ├── schemas/                      # Pydantic schemas
+│   │   │   ├── __init__.py
+│   │   │   └── email.py                  # Email request/response schemas
+│   │   │
+│   │   ├── services/                     # Business logic
+│   │   │   ├── __init__.py
+│   │   │   ├── resume_service.py         # Resume processing service
+│   │   │   └── email_service.py          # Email generation service
+│   │   │
+│   │   ├── __init__.py
+│   │   └── main.py                       # FastAPI application entry
+│   │
+│   ├── temp/                             # Temporary file storage
+│   ├── chroma_db/                        # Vector database storage
+│   ├── requirements.txt                  # Python dependencies
+│   └── .env                              # Environment variables
 │
 ├── frontend/
-│   ├── pages/                     # Next.js pages
-│   │   ├── index.js              # Home page
-│   │   ├── resume-scanner.js     # Resume Scanner page
-│   │   ├── email-writer.js       # Email Writer page
-│   │   └── api/                  # API routes
-│   ├── components/               # React components
+│   ├── pages/                            # Next.js pages
+│   │   ├── index.js                      # Home page
+│   │   ├── resume-scanner.js             # Resume Scanner page
+│   │   ├── email-writer.js               # Email Writer page
+│   │   └── api/                          # API routes
+│   ├── components/                       # React components
 │   │   ├── ResumeUpload.js
 │   │   ├── EmailForm.js
 │   │   └── ResultDisplay.js
-│   ├── styles/                   # CSS/Tailwind styles
+│   ├── styles/                           # CSS/Tailwind styles
 │   └── public/
-│       └── screenshots/          # Project screenshots
+│       └── screenshots/                  # Project screenshots
 │
 ├── .gitignore
 └── README.md
@@ -206,6 +239,9 @@ source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install LangChain HuggingFace (for embeddings)
+pip install -U langchain-huggingface
 ```
 
 **Configure Environment Variables:**
@@ -216,10 +252,19 @@ Create `.env` file in `backend/` directory:
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
+**Create Required Folders:**
+
+```bash
+# Create temp folder for file uploads
+mkdir temp
+
+# ChromaDB folder will be created automatically
+```
+
 **Run Backend Server:**
 
 ```bash
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 
 Backend runs at: `http://127.0.0.1:8000` 🎉
@@ -247,7 +292,7 @@ Frontend runs at: `http://localhost:3000` 🎉
 
 #### Upload Resume
 
-**POST** `/upload/`
+**POST** `/api/v1/resume/upload`
 
 Upload a PDF resume and receive AI-generated feedback.
 
@@ -260,17 +305,24 @@ Upload a PDF resume and receive AI-generated feedback.
 
 ```json
 {
-  "feedback": "Your resume demonstrates strong technical skills in React, FastAPI, and backend development. Key strengths include: 1) Diverse tech stack experience with modern frameworks, 2) Clear project descriptions showing problem-solving abilities, 3) Quantifiable achievements. Recommendations: Consider adding more metrics to quantify impact, expand on leadership experiences, and include specific technologies used in each project.",
-  "status": "success",
-  "timestamp": "2025-01-15T10:30:00Z"
+  "feedback": "Your resume demonstrates strong technical skills in React, FastAPI, and backend development. Key strengths include: 1) Diverse tech stack experience with modern frameworks, 2) Clear project descriptions showing problem-solving abilities, 3) Quantifiable achievements. Recommendations: Consider adding more metrics to quantify impact, expand on leadership experiences, and include specific technologies used in each project."
 }
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/resume/upload" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@resume.pdf"
 ```
 
 ### Email Writer Endpoints
 
 #### Generate Email
 
-**POST** `/generate-email/`
+**POST** `/api/v1/email/generate`
 
 Generate a professional job application email based on user input.
 
@@ -280,9 +332,7 @@ Generate a professional job application email based on user input.
 - Body:
 ```json
 {
-  "purpose": "Job application for Senior Software Engineer position",
-  "position": "Senior Software Engineer",
-  "company": "Tech Corp",
+  "topic": "Application for Senior Software Engineer position at Tech Corp",
   "tone": "professional",
   "length": "medium"
 }
@@ -292,10 +342,21 @@ Generate a professional job application email based on user input.
 
 ```json
 {
-  "email": "Subject: Application for Senior Software Engineer Position\n\nDear Hiring Manager,\n\nI am writing to express my strong interest in the Senior Software Engineer position at Tech Corp...",
-  "status": "success",
-  "timestamp": "2025-01-15T10:35:00Z"
+  "email": "Dear Hiring Manager,\n\nI am writing to express my strong interest in the Senior Software Engineer position at Tech Corp...",
+  "subject": "Application for Senior Software Engineer Position"
 }
+```
+
+**cURL Example:**
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/email/generate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Application for Senior Software Engineer",
+    "tone": "professional",
+    "length": "medium"
+  }'
 ```
 
 **Interactive API Docs:** Visit `http://127.0.0.1:8000/docs` for Swagger UI
@@ -307,7 +368,7 @@ Generate a professional job application email based on user input.
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **LLM** | Groq LLaMA 3.3 (70B) | Resume analysis & email generation |
-| **Embeddings** | all-MiniLM-L6-v2 | Text vectorization |
+| **Embeddings** | all-MiniLM-L6-v2 (HuggingFace) | Text vectorization |
 | **Vector DB** | ChromaDB | Efficient similarity search |
 | **Framework** | LangChain | RAG pipeline orchestration |
 | **Email AI** | Custom Prompt Engineering | Professional email crafting |
@@ -338,13 +399,14 @@ Generate a professional job application email based on user input.
 
 ## 🌟 Why This Project Stands Out
 
+✅ **Production-Grade Architecture** - Clean separation of concerns with layered structure  
 ✅ **Dual AI Tools** - Complete career assistance in one platform  
-✅ **Production-Ready RAG Architecture** - Implements industry-standard vector search  
+✅ **Advanced RAG Implementation** - Industry-standard vector search with ChromaDB  
 ✅ **Ultra-Fast Inference** - Groq provides 10x faster responses than traditional LLMs  
+✅ **Scalable Design** - Modular structure with API versioning (v1)  
 ✅ **Full-Stack AI Application** - Complete end-to-end implementation  
 ✅ **Real-World Use Case** - Solves actual problems for job seekers  
-✅ **Portfolio-Grade Project** - Demonstrates advanced AI/ML skills  
-✅ **Scalable Design** - Built with modern, maintainable architecture  
+✅ **Portfolio-Grade Project** - Demonstrates advanced AI/ML & software engineering skills  
 ✅ **Professional UI/UX** - Polished interface with excellent user experience
 
 **Perfect for demonstrating to recruiters and building your AI portfolio!** 💼
@@ -361,6 +423,9 @@ Generate a professional job application email based on user input.
 - [ ] Interview preparation assistant
 - [ ] Job matching recommendations
 - [ ] Resume ATS optimization score
+- [ ] PostgreSQL integration for user data
+- [ ] Authentication & user profiles
+- [ ] Resume version comparison
 
 ---
 
