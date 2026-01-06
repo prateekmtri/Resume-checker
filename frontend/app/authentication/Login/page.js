@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Navigation ke liye
 import { Mail, Lock, LogIn, Loader2, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,20 +19,43 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
-    // Simulate API Call (Backend se connect baad me karenge)
-    setTimeout(() => {
-      console.log("Login Data:", formData);
+    try {
+      // Backend API Call
+      const response = await fetch("http://127.0.0.1:8000/api/v1/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Invalid email or password");
+      }
+
+      // Success! Token save karo
+      localStorage.setItem("token", data.access_token);
+      
+      // Redirect to Home Page
+      router.push("/");
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Something went wrong. Is backend running?");
+    } finally {
       setLoading(false);
-      // Yahan redirect logic aayega
-    }, 2000);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
         
-        {/* Header - Matching Resume Screener Blue */}
+        {/* Header */}
         <div className="bg-blue-600 p-8 text-center">
           <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
             <LogIn className="w-8 h-8 text-white" />

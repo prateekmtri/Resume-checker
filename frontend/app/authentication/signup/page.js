@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Navigation ke liye
 import { User, Mail, Lock, UserPlus, Loader2, AlertCircle } from "lucide-react";
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState({ fullName: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,19 +19,45 @@ export default function SignupPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    // Simulate API Call
-    setTimeout(() => {
-      console.log("Signup Data:", formData);
+    try {
+      // Backend API Call
+      const response = await fetch("http://127.0.0.1:8000/api/v1/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: formData.fullName, // Backend expects snake_case
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Signup failed");
+      }
+
+      // Success! Redirect to Login page
+      alert("Account created successfully! Please login.");
+      router.push("/authentication/Login");
+
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Something went wrong. Is backend running?");
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
         
-        {/* Header - Matching Resume Screener Blue */}
+        {/* Header */}
         <div className="bg-blue-600 p-8 text-center">
           <div className="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm">
             <UserPlus className="w-8 h-8 text-white" />
