@@ -138,7 +138,7 @@ export default function SignupPage() {
           {/* Footer Link */}
           <div className="mt-6 text-center text-slate-600 text-sm">
             Already have an account?{" "}
-            <Link href="/authentication/login" className="text-blue-600 font-semibold hover:underline">
+            <Link href="/authentication/Login" className="text-blue-600 font-semibold hover:underline">
               Sign In
             </Link>
           </div>

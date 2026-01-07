@@ -41,7 +41,7 @@ export default function Navbar() {
         {/* --- CENTER/RIGHT: NAVIGATION --- */}
         <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-full border border-slate-200">
           <Link 
-            href="/" 
+            href="/resume-screener" 
             className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               pathname === '/' 
                 ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200' 

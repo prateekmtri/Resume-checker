@@ -41,7 +41,7 @@ export default function LoginPage() {
       localStorage.setItem("token", data.access_token);
       
       // Redirect to Home Page
-      router.push("/");
+      router.push("/resume-screener");
 
     } catch (err) {
       console.error(err);
