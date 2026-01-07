@@ -640,7 +640,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🌐 GitHub: [@prateekmtri](https://github.com/prateekmtri)
 - 📧 Email: prateek1tri2@gmail.com
 - 💼 LinkedIn: [Connect with me](https://linkedin.com/in/prateekmtri)
-- 🚀 Portfolio: [Your Portfolio URL]
+- 🚀 Portfolio: https://new-advance-portfolio.vercel.app/
 
 ---
 
