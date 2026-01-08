@@ -33,28 +33,56 @@ def store_documents(chunks, embeddings):
         embedding=embeddings,
         persist_directory="chroma_db"
     )
-    
     return vectordb
 
 def analyze_resume(query, vectordb):
-    retriever = vectordb.as_retriever(search_kwargs={"k": 4})
+    retriever = vectordb.as_retriever(search_kwargs={"k": 6})
 
     llm = ChatGroq(
         groq_api_key=os.getenv("GROQ_API_KEY"),
         model="llama-3.3-70b-versatile",
-        temperature=0.3
+        temperature=0.7
     )
 
     prompt = ChatPromptTemplate.from_template("""
-You are a professional resume reviewer.
-Use the following resume content to answer the question.
+You are an expert HR recruiter and professional resume reviewer with 15+ years of experience.
 
-Context:
+Analyze the following resume thoroughly and provide a comprehensive, actionable review.
+
+Resume Content:
 {context}
 
-Question: {input}
+Your Task: {input}
 
-Answer:""")
+Provide your analysis in the following structured format:
+
+📊 OVERALL SCORE: X/10
+
+✅ KEY STRENGTHS:
+- List 3-4 major strong points
+- Be specific about what makes them strong
+- Mention standout skills, achievements, or experiences
+
+⚠️ AREAS FOR IMPROVEMENT:
+- List 3-4 critical improvements needed
+- Explain WHY each improvement matters
+- Be constructive and specific
+
+🎯 MISSING ELEMENTS:
+- What important sections or details are missing?
+- What should be added to make it ATS-friendly?
+
+💡 ACTIONABLE RECOMMENDATIONS:
+- Provide 3-5 specific actions to improve the resume
+- Mention industry-standard best practices
+- Suggest quantifiable metrics to add if missing
+
+🔑 FINAL VERDICT:
+- One paragraph summary
+- Is this resume likely to get interviews?
+- Overall readiness level (Beginner/Intermediate/Strong/Excellent)
+
+Remember: Be honest, constructive, and focus on actionable feedback that will help the candidate improve their resume and land interviews.""")
 
     def format_docs(docs):
         return "\n\n".join(doc.page_content for doc in docs)
