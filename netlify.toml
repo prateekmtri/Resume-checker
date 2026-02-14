@@ -1,0 +1,14 @@
+[build]
+  # Next.js code is folder mein hai
+  base = "frontend"
+  
+  # Build karne ki command
+  command = "npm run build"
+  
+  # Next.js ka production build folder (.next ya out)
+  # Agar aap dynamic routes use kar rahe ho toh .next best hai
+  publish = ".next"
+
+[[plugins]]
+  # Netlify automatically Next.js ko optimize kar lega
+  package = "@netlify/plugin-nextjs"
