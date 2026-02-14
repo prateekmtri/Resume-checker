@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic[email]
+email-validator
+python-jose[cryptography]
+passlib[sha256_crypt]
+langchain
+langchain-community
+langchain-groq
+langchain-huggingface
+sentence-transformers
+chromadb
+pypdf
+python-dotenv
+groq

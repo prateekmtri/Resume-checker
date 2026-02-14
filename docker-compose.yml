@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Backend Service
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fastapi_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/chroma_db:/app/chroma_db  # Taaki vector DB data delete na ho
+    env_file:
+      - .env  # Langchain ki keys yahan se load hongi
+    networks:
+      - ai_network
+
+  # Frontend Service
+  frontend-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nextjs_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend-api  # Pehle backend start hoga, phir frontend
+    networks:
+      - ai_network
+
+networks:
+  ai_network:
+    driver: bridge

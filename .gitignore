@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+ENV/
+env/
+
+# FastAPI & uvicorn
+*.log
+
+# Chroma Vector DB
+backend/chroma_db/
+backend/temp/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (frontend)
+node_modules/
+
+# Build files
+dist/
+build/
+
+# Secrets
+*.key
+*.pem
