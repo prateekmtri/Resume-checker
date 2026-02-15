@@ -14,3 +14,4 @@ chromadb
 pypdf
 python-dotenv
 groq
+bcrypt==4.0.1
