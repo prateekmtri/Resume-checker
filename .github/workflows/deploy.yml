@@ -1,4 +1,30 @@
-deploy:
+name: Full Stack CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # STEP 1: Build Check
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend (Dry Run)
+        run: docker build ./backend -t backend-test:latest
+
+      - name: Build Frontend (Dry Run)
+        run: docker build ./frontend -t frontend-test:latest
+
+  # STEP 2: Automatic Deploy
+  deploy:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -8,7 +34,7 @@ deploy:
           RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "$RENDER_HOOK" ]; then
-            echo "Error: RENDER_DEPLOY_HOOK_URL is missing!"
+            echo "Error: RENDER_DEPLOY_HOOK_URL secret is missing in GitHub Settings!"
             exit 1
           fi
           curl -f -X POST "$RENDER_HOOK"
@@ -18,7 +44,7 @@ deploy:
           NETLIFY_HOOK: ${{ secrets.NETLIFY_DEPLOY_HOOK_URL }}
         run: |
           if [ -z "$NETLIFY_HOOK" ]; then
-            echo "Error: NETLIFY_DEPLOY_HOOK_URL is missing!"
+            echo "Error: NETLIFY_DEPLOY_HOOK_URL secret is missing in GitHub Settings!"
             exit 1
           fi
           curl -f -X POST "$NETLIFY_HOOK"
