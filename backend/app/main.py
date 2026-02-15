@@ -6,7 +6,7 @@ from app.api.v1.endpoints import resume, email
 from app.api import auth
 import os
 
-# Database tables creation
+
 user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="JobAI API")
