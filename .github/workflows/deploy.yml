@@ -1,11 +1,14 @@
-name: CI Pipeline
+name: Full Stack CI/CD Pipeline
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build-test:
+  # STEP 1: Sab kuch build karke check karo (CI)
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -14,8 +17,26 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Backend Build Check (Docker ke through)
       - name: Build Backend (Dry Run)
         run: docker build ./backend -t backend-test:latest
 
+      # Frontend Build Check (Docker ke through)
       - name: Build Frontend (Dry Run)
         run: docker build ./frontend -t frontend-test:latest
+
+  # STEP 2: Agar build pass ho gayi, toh automatic deploy karo (CD)
+  deploy:
+    needs: build-and-test # Ye tabhi chalega jab upar wala job pass hoga
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      # Render (Backend) Deployment
+      - name: Deploy Backend to Render
+        run: |
+          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        
+      # Netlify (Frontend) Deployment
+      - name: Deploy Frontend to Netlify
+        run: |
+          curl -f -X POST "${{ secrets.NETLIFY_DEPLOY_HOOK_URL }}"

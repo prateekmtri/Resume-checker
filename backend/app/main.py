@@ -1,35 +1,36 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-
-# --- NEW IMPORTS (Ye add karo) ---
-from app.db.database import engine, Base 
-from app.models import user  # Ye zaroori hai taaki table create ho sake
-from app.api import auth     # Ye tumhara naya auth router hai
-# ---------------------------------
-
-load_dotenv()
-
+from app.db.database import engine, Base
+from app.models import user
 from app.api.v1.endpoints import resume, email
+from app.api import auth
+import os
 
-# --- CREATE DATABASE TABLES (Ye line sabse important hai SQLite ke liye) ---
-# Jab server start hoga, ye check karega ki tables hain ya nahi. Nahi hain to bana dega.
+# Database tables creation
 user.Base.metadata.create_all(bind=engine)
-# -------------------------------------------------------------------------
 
-app = FastAPI()
+app = FastAPI(title="JobAI API")
+
+# CORS Configuration
+# "*" ki jagah specific URLs dena better hai production mein
+origins = [
+    "http://localhost:3000",
+    "https://newjobai.netlify.app",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Existing routers
+# Routes
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(resume.router, prefix="/api/v1/resume", tags=["Resume"])
 app.include_router(email.router, prefix="/api/v1/email", tags=["Email"])
 
-# --- NEW AUTH ROUTER (Ye line add karo) ---
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-# ------------------------------------------
+@app.get("/")
+def read_root():
+    return {"status": "online", "message": "Backend is running successfully!"}
