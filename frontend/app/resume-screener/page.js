@@ -35,80 +35,85 @@ export default function Home() {
     }
   };
 
-  // Form submit (Backend Call)
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+// Form submit (Backend Call)
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!file) {
-      setError("Please select a file first.");
-      return;
+  if (!file) {
+    setError("Please select a file first.");
+    return;
+  }
+
+  setLoading(true);
+  setError(null);
+  setResult(null);
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  console.log("🚀 Starting upload for:", file.name);
+
+  try {
+    // ✅ TIMEOUT CONTROLLER ADD KARO (90 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 seconds
+
+    const response = await fetch("https://resume-checker-zhh3.onrender.com/api/v1/resume/upload", {
+      method: "POST",
+      body: formData,
+      signal: controller.signal, // ✅ YE LINE ADD KARO
+    });
+
+    clearTimeout(timeoutId); // ✅ YE LINE ADD KARO
+
+    console.log("📡 Response status:", response.status);
+
+    if (!response.ok) {
+      let errorMessage = "Failed to connect to the backend.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch {
+        const errorText = await response.text();
+        errorMessage = errorText || `Server error: ${response.status}`;
+      }
+      
+      console.error("❌ Server error:", errorMessage);
+      throw new Error(errorMessage);
     }
 
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-
-    console.log("🚀 Starting upload for:", file.name);
-
-    try {
-      const response = await fetch("https://resume-checker-zhh3.onrender.com/api/v1/resume/upload", {
-        method: "POST",
-        body: formData,
-        // Don't set Content-Type header - browser sets it automatically with boundary for multipart/form-data
-      });
-
-      console.log("📡 Response status:", response.status);
-      console.log("📡 Response headers:", response.headers);
-
-      if (!response.ok) {
-        // Try to get error details from response
-        let errorMessage = "Failed to connect to the backend.";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch {
-          // If response is not JSON, get text
-          const errorText = await response.text();
-          errorMessage = errorText || `Server error: ${response.status}`;
-        }
-        
-        console.error("❌ Server error:", errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      console.log("✅ Response data:", data);
-      
-      if (data.feedback) {
-        setResult(data.feedback);
-        console.log("✅ Feedback received successfully");
-      } else {
-        setError("No feedback received from server.");
-        console.warn("⚠️ No feedback in response");
-      }
-
-    } catch (err) {
-      console.error("❌ Upload error:", err);
-      
-      // User-friendly error messages
-      let userMessage = "❌ Error analyzing resume. ";
-      
-      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
-        userMessage += "Cannot connect to server. Please check if backend is running.";
-      } else if (err.message.includes("timeout")) {
-        userMessage += "Request timed out. Please try again.";
-      } else {
-        userMessage += err.message;
-      }
-      
-      setError(userMessage);
-    } finally {
-      setLoading(false);
+    const data = await response.json();
+    console.log("✅ Response data:", data);
+    
+    if (data.feedback) {
+      setResult(data.feedback);
+      console.log("✅ Feedback received successfully");
+    } else {
+      setError("No feedback received from server.");
+      console.warn("⚠️ No feedback in response");
     }
-  };
+
+  } catch (err) {
+    console.error("❌ Upload error:", err);
+    
+    let userMessage = "❌ Error analyzing resume. ";
+    
+    // ✅ TIMEOUT ERROR HANDLING ADD KARO
+    if (err.name === 'AbortError') {
+      userMessage += "Request timed out after 90 seconds. Server may be loading AI model. Please try again in 2 minutes.";
+    } else if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+      userMessage += "Cannot connect to server. Please check if backend is running.";
+    } else if (err.message.includes("timeout")) {
+      userMessage += "Request timed out. Please try again.";
+    } else {
+      userMessage += err.message;
+    }
+    
+    setError(userMessage);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Parse result into sections
   const parseResult = (text) => {

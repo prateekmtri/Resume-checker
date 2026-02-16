@@ -1,3 +1,5 @@
+# app/main.py
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
@@ -7,7 +9,6 @@ from app.api import auth
 import logging
 import time
 
-# Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -15,23 +16,30 @@ user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="JobAI API")
 
-# CORS - Sab origins allow karo testing ke liye
-origins = [
-    "http://localhost:3000",
-    "http://localhost:3001", 
-    "https://newjobai.netlify.app",
-    "*"  # Ye testing ke liye - production mein hata dena
-]
+# CORS
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Testing ke liye sab allow
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Request logging - har request ko log karo
+# Model pre-loading
+@app.on_event("startup")
+async def startup_event():
+    """Load model on startup to avoid timeout during first request"""
+    try:
+        logger.info("🔄 Pre-loading AI model on startup...")
+        from app.services.resume_service import get_model
+        get_model()  # Load model once
+        logger.info("✅ Model loaded successfully on startup!")
+    except Exception as e:
+        logger.error(f"⚠️ Failed to pre-load model: {str(e)}")
+
+# Request logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"📨 Request: {request.method} {request.url.path}")

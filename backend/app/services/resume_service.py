@@ -1,49 +1,71 @@
-import os
-from fastapi import UploadFile
-from app.langchain.resume_analyzer import (
-    load_resume,
-    split_docs,
-    create_embeddings,
-    store_documents,
-    analyze_resume
-)
+# app/services/resume_service.py
 
-async def process_resume(file: UploadFile):
-    # 1. Absolute Path Setup (Render/Docker fix)
-    # Isse hum current working directory se 'temp' folder ka sahi rasta nikalte hain
-    base_path = os.getcwd() 
-    upload_dir = os.path.join(base_path, "temp")
-    
-    # Agar folder kisi wajah se nahi bana, toh ye line use bana degi
-    if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir, exist_ok=True)
-        
-    file_location = os.path.join(upload_dir, file.filename)
+import logging
+logger = logging.getLogger(__name__)
 
-    # 2. File ko save karo
+# Don't use heavy models on free tier
+async def process_resume(file):
     try:
+        logger.info(f"📄 Processing resume: {file.filename}")
+        
+        # Read file
         content = await file.read()
-        with open(file_location, "wb") as f:
-            f.write(content)
-    except Exception as e:
-        print(f"Error saving file: {e}")
-        return {"error": f"Internal Server Error while saving file: {str(e)}"}
+        text = content.decode('utf-8', errors='ignore')
+        
+        # Simple rule-based analysis (no ML)
+        score = 7
+        
+        strengths = []
+        improvements = []
+        missing = []
+        
+        # Basic checks
+        if len(text) > 500:
+            strengths.append("Good content length")
+        else:
+            improvements.append("Resume seems too short")
+            
+        if "@" in text and "linkedin" in text.lower():
+            strengths.append("Contact information included")
+        else:
+            missing.append("LinkedIn profile link")
+            
+        if any(word in text.lower() for word in ["increased", "improved", "reduced", "achieved"]):
+            strengths.append("Uses strong action verbs")
+            score += 1
+        else:
+            improvements.append("Add more action verbs and quantifiable achievements")
+            
+        if any(char.isdigit() for char in text):
+            strengths.append("Includes quantifiable metrics")
+        else:
+            improvements.append("Add specific numbers and metrics")
+            missing.append("Quantifiable achievements")
+        
+        feedback = f"""OVERALL SCORE: {score}/10
 
-    # 3. Resume processing logic
-    try:
-        docs = load_resume(file_location)
-        chunks = split_docs(docs)
-        embeddings = create_embeddings()
-        vectordb = store_documents(chunks, embeddings)
+KEY STRENGTHS:
+{chr(10).join(f"- {s}" for s in strengths)}
+
+AREAS FOR IMPROVEMENT:
+{chr(10).join(f"- {i}" for i in improvements)}
+
+MISSING ELEMENTS:
+{chr(10).join(f"- {m}" for m in missing)}
+
+ACTIONABLE RECOMMENDATIONS:
+- Add specific metrics (e.g., "Increased sales by 25%")
+- Include LinkedIn and GitHub profile links
+- Use strong action verbs throughout
+- Add relevant certifications
+- Include a professional summary
+
+FINAL VERDICT:
+Your resume has a solid foundation. Focus on adding quantifiable achievements and professional links to make it stand out."""
+
+        logger.info(f"✅ Successfully processed: {file.filename}")
+        return feedback
         
-        # AI Analysis
-        result = analyze_resume("Analyze the resume and provide overall score, strengths, and improvements.", vectordb)
-        
-        return result
     except Exception as e:
-        print(f"Analysis Error: {e}")
-        return {"error": f"AI Analysis failed: {str(e)}"}
-    finally:
-        # Cleanup: Processing ke baad file delete karna taaki storage na bhare
-        if os.path.exists(file_location):
-            os.remove(file_location)
+        logger.error(f"❌ Error: {str(e)}")
+        raise
