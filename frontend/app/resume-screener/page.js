@@ -12,9 +12,26 @@ export default function Home() {
   // File selection handler
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      
+      // File size check (10MB max)
+      const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+      if (selectedFile.size > maxSize) {
+        setError("File size exceeds 10MB limit. Please select a smaller file.");
+        return;
+      }
+
+      // File type check
+      const allowedTypes = ["application/pdf", "text/plain"];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        setError("Invalid file type. Please upload PDF or TXT files only.");
+        return;
+      }
+
+      setFile(selectedFile);
       setError(null);
       setResult(null);
+      console.log("✅ File selected:", selectedFile.name, "Size:", (selectedFile.size / 1024).toFixed(2), "KB");
     }
   };
 
@@ -34,21 +51,60 @@ export default function Home() {
     const formData = new FormData();
     formData.append("file", file);
 
+    console.log("🚀 Starting upload for:", file.name);
+
     try {
       const response = await fetch("https://resume-checker-zhh3.onrender.com/api/v1/resume/upload", {
         method: "POST",
         body: formData,
+        // Don't set Content-Type header - browser sets it automatically with boundary for multipart/form-data
       });
 
+      console.log("📡 Response status:", response.status);
+      console.log("📡 Response headers:", response.headers);
+
       if (!response.ok) {
-        throw new Error("Failed to connect to the backend.");
+        // Try to get error details from response
+        let errorMessage = "Failed to connect to the backend.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch {
+          // If response is not JSON, get text
+          const errorText = await response.text();
+          errorMessage = errorText || `Server error: ${response.status}`;
+        }
+        
+        console.error("❌ Server error:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      setResult(data.feedback || "No feedback received.");
+      console.log("✅ Response data:", data);
+      
+      if (data.feedback) {
+        setResult(data.feedback);
+        console.log("✅ Feedback received successfully");
+      } else {
+        setError("No feedback received from server.");
+        console.warn("⚠️ No feedback in response");
+      }
+
     } catch (err) {
-      console.error(err);
-      setError("❌ Error fetching feedback. Is the backend running?");
+      console.error("❌ Upload error:", err);
+      
+      // User-friendly error messages
+      let userMessage = "❌ Error analyzing resume. ";
+      
+      if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+        userMessage += "Cannot connect to server. Please check if backend is running.";
+      } else if (err.message.includes("timeout")) {
+        userMessage += "Request timed out. Please try again.";
+      } else {
+        userMessage += err.message;
+      }
+      
+      setError(userMessage);
     } finally {
       setLoading(false);
     }
@@ -56,6 +112,8 @@ export default function Home() {
 
   // Parse result into sections
   const parseResult = (text) => {
+    if (!text) return null;
+
     const sections = {
       score: "",
       strengths: [],
@@ -69,28 +127,33 @@ export default function Home() {
     let currentSection = "";
 
     lines.forEach(line => {
-      if (line.includes('OVERALL SCORE')) {
-        const match = line.match(/(\d+)\/10/);
+      const trimmedLine = line.trim();
+      
+      if (trimmedLine.includes('OVERALL SCORE')) {
+        const match = trimmedLine.match(/(\d+)\/10/);
         sections.score = match ? match[1] : "";
-      } else if (line.includes('KEY STRENGTHS')) {
+      } else if (trimmedLine.includes('KEY STRENGTHS')) {
         currentSection = "strengths";
-      } else if (line.includes('AREAS FOR IMPROVEMENT')) {
+      } else if (trimmedLine.includes('AREAS FOR IMPROVEMENT')) {
         currentSection = "improvements";
-      } else if (line.includes('MISSING ELEMENTS')) {
+      } else if (trimmedLine.includes('MISSING ELEMENTS')) {
         currentSection = "missing";
-      } else if (line.includes('ACTIONABLE RECOMMENDATIONS')) {
+      } else if (trimmedLine.includes('ACTIONABLE RECOMMENDATIONS')) {
         currentSection = "recommendations";
-      } else if (line.includes('FINAL VERDICT')) {
+      } else if (trimmedLine.includes('FINAL VERDICT')) {
         currentSection = "verdict";
-      } else if (line.trim().startsWith('-')) {
-        const content = line.replace(/^-\s*/, '').trim();
+      } else if (trimmedLine.startsWith('-')) {
+        const content = trimmedLine.replace(/^-\s*/, '').trim();
         if (content && currentSection && currentSection !== "verdict") {
           sections[currentSection].push(content);
         }
-      } else if (currentSection === "verdict" && line.trim()) {
-        sections.verdict += line.trim() + " ";
+      } else if (currentSection === "verdict" && trimmedLine) {
+        sections.verdict += trimmedLine + " ";
       }
     });
+
+    // Clean up verdict
+    sections.verdict = sections.verdict.trim();
 
     return sections;
   };
@@ -125,9 +188,10 @@ export default function Home() {
               <div className="relative border-2 border-dashed border-slate-300 rounded-xl p-12 hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 text-center cursor-pointer group">
                 <input
                   type="file"
-                  accept=".pdf,.txt"
+                  accept=".pdf,.txt,application/pdf,text/plain"
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={loading}
                 />
                 <div className="flex flex-col items-center gap-4">
                   {file ? (
@@ -138,6 +202,9 @@ export default function Home() {
                       <div>
                         <span className="text-xl font-semibold text-slate-700 block">
                           {file.name}
+                        </span>
+                        <span className="text-sm text-slate-500 block mt-1">
+                          {(file.size / 1024).toFixed(2)} KB
                         </span>
                         <span className="text-sm text-green-600 font-medium flex items-center justify-center gap-1 mt-2">
                           <CheckCircle size={16} />
@@ -166,7 +233,7 @@ export default function Home() {
               {/* Error */}
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl flex items-center gap-3">
-                  <AlertCircle size={20} className="flex-shrink-0" />
+                  <AlertCircle size={20} className="shrink-0" />
                   <span className="font-medium">{error}</span>
                 </div>
               )}
@@ -229,7 +296,7 @@ export default function Home() {
                 <div className="space-y-3">
                   {parsedResult.strengths.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-4 bg-green-50 rounded-lg border border-green-100">
-                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                       <span className="text-slate-700">{item}</span>
                     </div>
                   ))}
@@ -249,7 +316,7 @@ export default function Home() {
                 <div className="space-y-3">
                   {parsedResult.improvements.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-4 bg-orange-50 rounded-lg border border-orange-100">
-                      <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-5 h-5 text-orange-600 shrink-0 mt-0.5" />
                       <span className="text-slate-700">{item}</span>
                     </div>
                   ))}
@@ -269,7 +336,7 @@ export default function Home() {
                 <div className="space-y-3">
                   {parsedResult.missing.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-4 bg-red-50 rounded-lg border border-red-100">
-                      <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                       <span className="text-slate-700">{item}</span>
                     </div>
                   ))}
@@ -289,7 +356,7 @@ export default function Home() {
                 <div className="space-y-3">
                   {parsedResult.recommendations.map((item, idx) => (
                     <div key={idx} className="flex gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                      <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <Sparkles className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                       <span className="text-slate-700">{item}</span>
                     </div>
                   ))}
