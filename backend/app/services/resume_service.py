@@ -9,30 +9,31 @@ from app.langchain.resume_analyzer import (
 )
 
 async def process_resume(file: UploadFile):
-    # 1. Folder setup (Render/Docker compatibility ke liye)
-    upload_dir = "temp"
+    # 1. Absolute Path Setup (Render/Docker fix)
+    # Isse hum current working directory se 'temp' folder ka sahi rasta nikalte hain
+    base_path = os.getcwd() 
+    upload_dir = os.path.join(base_path, "temp")
     
-    # Agar folder nahi hai, to use create kar lo
+    # Agar folder kisi wajah se nahi bana, toh ye line use bana degi
     if not os.path.exists(upload_dir):
-        os.makedirs(upload_dir)
+        os.makedirs(upload_dir, exist_ok=True)
         
     file_location = os.path.join(upload_dir, file.filename)
 
     # 2. File ko save karo
     try:
+        content = await file.read()
         with open(file_location, "wb") as f:
-            content = await file.read()
             f.write(content)
     except Exception as e:
-        return {"error": f"Failed to save file: {str(e)}"}
+        print(f"Error saving file: {e}")
+        return {"error": f"Internal Server Error while saving file: {str(e)}"}
 
     # 3. Resume processing logic
     try:
         docs = load_resume(file_location)
         chunks = split_docs(docs)
         embeddings = create_embeddings()
-        
-        # ChromaDB ya Vector Store logic
         vectordb = store_documents(chunks, embeddings)
         
         # AI Analysis
@@ -40,8 +41,9 @@ async def process_resume(file: UploadFile):
         
         return result
     except Exception as e:
-        return {"error": f"Analysis failed: {str(e)}"}
+        print(f"Analysis Error: {e}")
+        return {"error": f"AI Analysis failed: {str(e)}"}
     finally:
-        # Optional: Processing ke baad temp file delete karna achhi baat hai
+        # Cleanup: Processing ke baad file delete karna taaki storage na bhare
         if os.path.exists(file_location):
             os.remove(file_location)
