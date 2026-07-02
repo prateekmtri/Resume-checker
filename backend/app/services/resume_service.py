@@ -3,6 +3,94 @@
 import logging
 logger = logging.getLogger(__name__)
 
+import os
+import tempfile
+from dotenv import load_dotenv
+from groq import Groq
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
+
+load_dotenv()
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+
+async def stream_resume_analysis(file_bytes: bytes):
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            temp_file.write(file_bytes)
+            temp_path = temp_file.name
+
+        loader = PyPDFLoader(temp_path)
+        documents = loader.load()
+        resume_text = "\n\n".join(document.page_content for document in documents)
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50
+        )
+        chunks = splitter.split_text(resume_text)
+
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        vectorstore = Chroma.from_texts(
+            texts=chunks,
+            embedding=embeddings
+        )
+        relevant_docs = vectorstore.similarity_search(
+            "resume strengths improvements missing skills ATS score",
+            k=6
+        )
+        context = "\n\n".join(doc.page_content for doc in relevant_docs)
+
+        prompt = f"""You are an expert resume reviewer and ATS optimization specialist.
+
+Analyze this resume and provide clear, actionable feedback.
+
+Resume Content:
+{context}
+
+Provide the analysis with these exact sections:
+1) Strengths
+2) Improvements needed
+3) Missing Skills
+4) ATS score out of 10"""
+
+        stream = groq_client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert HR recruiter and ATS resume reviewer."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            model="llama-3.3-70b-versatile",
+            temperature=0.7,
+            max_tokens=1024,
+            stream=True,
+        )
+
+        for chunk in stream:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield f"data: {content}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    except Exception as e:
+        logger.error(f"Streaming resume analysis error: {str(e)}")
+        yield f"data: Error: {str(e)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
 # Don't use heavy models on free tier
 async def process_resume(file):
     try:

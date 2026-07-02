@@ -53,3 +53,40 @@ Make it natural, clear, and actionable."""
         subject = "Your Email Subject"
     
     return EmailResponse(email=email_content, subject=subject)
+
+
+async def stream_email_content(topic: str, tone: str, length: str):
+    prompt = f"""Write a {tone} email about: {topic}
+
+Length: {length}
+Tone: {tone}
+
+Generate:
+1. Subject line (start with "Subject:")
+2. Email body (professional format with greeting, body, closing)
+
+Make it natural, clear, and actionable."""
+
+    stream = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an expert email writer. Write professional, clear, and effective emails."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+        model="llama-3.3-70b-versatile",
+        temperature=0.7,
+        max_tokens=1024,
+        stream=True,
+    )
+
+    for chunk in stream:
+        content = chunk.choices[0].delta.content
+        if content:
+            yield f"data: {content}\n\n"
+
+    yield "data: [DONE]\n\n"
