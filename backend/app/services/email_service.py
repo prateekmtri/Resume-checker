@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from groq import Groq
 import os
 from app.schemas.email import EmailRequest, EmailResponse

@@ -7,7 +7,6 @@ from app.models import user
 from app.api.v1.endpoints import resume, email
 from app.api import auth
 import logging
-import time
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,7 +15,6 @@ user.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="JobAI API")
 
-# CORS
 origins = ["*"]
 
 app.add_middleware(
@@ -27,19 +25,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Model pre-loading
 @app.on_event("startup")
 async def startup_event():
-    """Load model on startup to avoid timeout during first request"""
-    try:
-        logger.info("🔄 Pre-loading AI model on startup...")
-        from app.services.resume_service import get_model
-        get_model()  # Load model once
-        logger.info("✅ Model loaded successfully on startup!")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to pre-load model: {str(e)}")
+    logger.info("✅ JobAI Backend started!")
 
-# Request logging
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info(f"📨 Request: {request.method} {request.url.path}")
@@ -51,7 +40,6 @@ async def log_requests(request: Request, call_next):
         logger.error(f"❌ Error: {str(e)}")
         raise
 
-# Routes
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(resume.router, prefix="/api/v1/resume", tags=["Resume"])
 app.include_router(email.router, prefix="/api/v1/email", tags=["Email"])
