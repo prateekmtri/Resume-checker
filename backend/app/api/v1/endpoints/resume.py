@@ -1,11 +1,66 @@
 # app/api/v1/endpoints/resume.py
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 import logging
+from app.core.security import SECRET_KEY, ALGORITHM
+from app.db.database import get_db
+from app.models.user import User
+from app.services.resume_service import stream_resume_analysis
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+bearer_scheme = HTTPBearer()
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials"
+            )
+
+        return user
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
+
+
+@router.post("/upload/stream")
+async def upload_resume_stream(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    file_bytes = await file.read()
+    return StreamingResponse(
+        stream_resume_analysis(file_bytes),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):
