@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, Sparkles, TrendingUp, AlertTriangle, Lightbulb, Award } from "lucide-react";
 
 // ------------------------------------------------------------------
@@ -94,6 +94,43 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [streamedText, setStreamedText] = useState('');
+  const [hasExistingResume, setHasExistingResume] = useState(false);
+
+  useEffect(() => {
+    const loadExistingResume = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      console.log("TOKEN BEING SENT:", localStorage.getItem("token"));
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/resume/latest`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 404) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Unable to load saved resume');
+        }
+
+        const data = await response.json();
+        if (data.analysis) {
+          setResult(data.analysis);
+          setStreamedText(data.analysis);
+          setHasExistingResume(true);
+        }
+      } catch (err) {
+        console.error('Failed to load existing resume:', err);
+      }
+    };
+
+    loadExistingResume();
+  }, []);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -135,9 +172,10 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
+      console.log("TOKEN BEING SENT:", localStorage.getItem("token"));
 
-      const response = await fetch("http://localhost:8000/api/v1/resume/upload/stream", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/resume/upload/stream`, {
         method: "POST",
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -181,6 +219,14 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReplaceResume = () => {
+    setFile(null);
+    setResult(null);
+    setStreamedText('');
+    setError(null);
+    setHasExistingResume(false);
   };
 
   const parsedResult = result ? parseResult(result) : null;
@@ -254,6 +300,16 @@ export default function Home() {
                   <AlertCircle size={20} className="shrink-0" />
                   <span className="font-medium">{error}</span>
                 </div>
+              )}
+
+              {hasExistingResume && !loading && (
+                <button
+                  type="button"
+                  onClick={handleReplaceResume}
+                  className="w-full py-3 rounded-xl font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all duration-300"
+                >
+                  Replace Resume
+                </button>
               )}
 
               {/* Button */}
