@@ -11,13 +11,16 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from sqlalchemy.orm import Session
+from app.models.resume import Resume
 
 load_dotenv()
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-async def stream_resume_analysis(file_bytes: bytes):
+async def stream_resume_analysis(file_bytes: bytes, filename: str, user_id: int, db: Session):
     temp_path = None
+    full_response = ""
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
@@ -78,7 +81,18 @@ Provide the analysis with these exact sections:
         for chunk in stream:
             content = chunk.choices[0].delta.content
             if content:
+                full_response += content
                 yield f"data: {content}\n\n"
+
+        existing_resume = db.query(Resume).filter(Resume.user_id == user_id).first()
+        if existing_resume:
+            existing_resume.filename = filename
+            existing_resume.analysis_text = full_response
+        else:
+            new_resume = Resume(user_id=user_id, filename=filename, analysis_text=full_response)
+            db.add(new_resume)
+
+        db.commit()
 
         yield "data: [DONE]\n\n"
 

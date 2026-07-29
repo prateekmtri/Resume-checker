@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, Sparkles, TrendingUp, AlertTriangle, Lightbulb, Award } from "lucide-react";
 
 // ------------------------------------------------------------------
@@ -8,71 +8,51 @@ import { UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, Sparkles, Tre
 // Splits the raw streamed text into structured sections.
 // ------------------------------------------------------------------
 function parseResult(text) {
-  if (!text) {
-    return { score: null, strengths: [], improvements: [], missing: [], recommendations: [] };
-  }
-
-  // Extract bullet points from a chunk of text.
+  if (!text) return { score: null, strengths: [], improvements: [], missing: [], recommendations: [] };
+  
+  const scoreMatch = text.match(/(\d+)\s*(?:out of|\/)\s*10/i);
+  const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
+  
+  const extractSection = (startKeyword, endKeywords) => {
+    const startRegex = new RegExp(startKeyword, 'i');
+    const startMatch = text.search(startRegex);
+    if (startMatch === -1) return '';
+    let endIndex = text.length;
+    endKeywords.forEach(kw => {
+      const idx = text.search(new RegExp(kw, 'i'));
+      if (idx > startMatch && idx < endIndex) endIndex = idx;
+    });
+    return text.slice(startMatch, endIndex);
+  };
+  
   const extractBullets = (chunk) => {
     if (!chunk) return [];
-    return chunk
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.startsWith("-") || line.startsWith("•"))
-      .map((line) => line.replace(/^[-•]\s*/, "").trim())
-      .filter(Boolean);
-  };
-
-  // Section keyword patterns, in the order they usually appear.
-  // Each entry: { key, regex } — regex marks where that section starts.
-  const sectionDefs = [
-    { key: "strengths", regex: /(##\s*)?\(?1\)?[.)]?\s*|Strengths/i },
-    { key: "improvements", regex: /(##\s*)?\(?2\)?[.)]?\s*|Improvements?\s*needed|Improvements?/i },
-    { key: "missing", regex: /(##\s*)?\(?3\)?[.)]?\s*|Missing\s*Skills|Missing/i },
-    { key: "atsScore", regex: /(##\s*)?\(?4\)?[.)]?\s*|ATS\s*score|score\s*out\s*of\s*10/i },
-    { key: "recommendations", regex: /(##\s*)?\(?5\)?[.)]?\s*|Recommendations?/i },
-  ];
-
-  // Find the first match index for each keyword type, searching in order
-  // so we don't re-match the same "1)" style token across sections.
-  const keywordFinders = [
-    { key: "strengths", regex: /strengths/i },
-    { key: "improvements", regex: /improvements?\s*needed|improvements?/i },
-    { key: "missing", regex: /missing\s*skills|missing/i },
-    { key: "atsScore", regex: /ats\s*score|score\s*out\s*of\s*10/i },
-    { key: "recommendations", regex: /recommendations?/i },
-  ];
-
-  const found = [];
-  keywordFinders.forEach(({ key, regex }) => {
-    const match = text.match(regex);
-    if (match && match.index !== undefined) {
-      found.push({ key, index: match.index });
+    const lines = chunk.split('\n').map(l => l.trim()).filter(Boolean);
+    const bullets = [];
+    lines.forEach(line => {
+      const match = line.match(/^(?:[-*•]|\d+[.)]) (.+)/);
+      if (match) bullets.push(match[1].trim());
+    });
+    if (bullets.length === 0) {
+      return chunk.split(/\.\s+/)
+        .map(s => s.replace(/^[\-*•\d.)]+\s*/, '').trim())
+        .filter(s => s.length > 20);
     }
-  });
-
-  // Sort by where they actually appear in the text.
-  found.sort((a, b) => a.index - b.index);
-
-  // Build slices between consecutive found sections.
-  const slices = {};
-  found.forEach((item, i) => {
-    const start = item.index;
-    const end = i + 1 < found.length ? found[i + 1].index : text.length;
-    slices[item.key] = text.slice(start, end);
-  });
-
-  const strengths = extractBullets(slices.strengths);
-  const improvements = extractBullets(slices.improvements);
-  const missing = extractBullets(slices.missing);
-  const recommendations = extractBullets(slices.recommendations);
-
-  // ATS score — look across the ats slice first, fall back to full text.
-  const scoreSource = slices.atsScore || text;
-  const scoreMatch = scoreSource.match(/(\d+)\s*out\s*of\s*10/i) || text.match(/(\d+)\s*out\s*of\s*10/i);
-  const score = scoreMatch ? parseInt(scoreMatch[1], 10) : null;
-
-  return { score, strengths, improvements, missing, recommendations };
+    return bullets;
+  };
+  
+  const strengthsChunk = extractSection('strength', ['improvement', 'missing', 'ats', 'recommendation', '##']);
+  const improvementsChunk = extractSection('improvement|areas for', ['missing', 'ats', 'recommendation', '##']);
+  const missingChunk = extractSection('missing', ['ats', 'recommendation', '##']);
+  const recommendationsChunk = extractSection('recommendation', ['##', '$']);
+  
+  return {
+    score,
+    strengths: extractBullets(strengthsChunk),
+    improvements: extractBullets(improvementsChunk),
+    missing: extractBullets(missingChunk),
+    recommendations: extractBullets(recommendationsChunk),
+  };
 }
 
 // ------------------------------------------------------------------
@@ -114,6 +94,43 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [streamedText, setStreamedText] = useState('');
+  const [hasExistingResume, setHasExistingResume] = useState(false);
+
+  useEffect(() => {
+    const loadExistingResume = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      console.log("TOKEN BEING SENT:", localStorage.getItem("token"));
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/resume/latest`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 404) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Unable to load saved resume');
+        }
+
+        const data = await response.json();
+        if (data.analysis) {
+          setResult(data.analysis);
+          setStreamedText(data.analysis);
+          setHasExistingResume(true);
+        }
+      } catch (err) {
+        console.error('Failed to load existing resume:', err);
+      }
+    };
+
+    loadExistingResume();
+  }, []);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -155,9 +172,10 @@ export default function Home() {
     formData.append("file", file);
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('token');
+      console.log("TOKEN BEING SENT:", localStorage.getItem("token"));
 
-      const response = await fetch("http://localhost:8000/api/v1/resume/upload/stream", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/resume/upload/stream`, {
         method: "POST",
         headers: {
           ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -203,7 +221,15 @@ export default function Home() {
     }
   };
 
-  const parsed = result ? parseResult(result) : null;
+  const handleReplaceResume = () => {
+    setFile(null);
+    setResult(null);
+    setStreamedText('');
+    setError(null);
+    setHasExistingResume(false);
+  };
+
+  const parsedResult = result ? parseResult(result) : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100 py-12 px-4">
@@ -276,6 +302,16 @@ export default function Home() {
                 </div>
               )}
 
+              {hasExistingResume && !loading && (
+                <button
+                  type="button"
+                  onClick={handleReplaceResume}
+                  className="w-full py-3 rounded-xl font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-all duration-300"
+                >
+                  Replace Resume
+                </button>
+              )}
+
               {/* Button */}
               <button
                 type="submit"
@@ -327,109 +363,54 @@ export default function Home() {
         )}
 
         {/* Structured Result (after stream completes) */}
-        {result && parsed && (
-          <div className="space-y-6">
-
-            <div className="flex items-center gap-3 mb-2 animate-fadeIn opacity-0" style={{ animationFillMode: "forwards" }}>
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Award className="w-5 h-5 text-blue-600" />
+        {result && parsedResult && (
+          <div className="space-y-6 mt-8">
+            {parsedResult.score && (
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-8 text-white text-center shadow-xl">
+                <p className="text-lg font-semibold mb-2">ATS Compatibility Score</p>
+                <div className="text-8xl font-bold">{parsedResult.score}</div>
+                <div className="text-2xl text-blue-200">/10</div>
               </div>
-              <h3 className="text-2xl font-bold text-slate-800">Resume Analysis</h3>
-              <div className="ml-auto flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-medium">Complete</span>
-              </div>
-            </div>
-
-            {/* ATS Score card */}
-            {parsed.score !== null && (
-              <div
-                className="rounded-2xl shadow-xl p-10 text-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 animate-fadeIn opacity-0"
-                style={{ animationFillMode: "forwards" }}
-              >
-                <p className="text-blue-100 font-semibold tracking-wide uppercase text-sm mb-2">
-                  ATS Compatibility Score
-                </p>
-                <div className="flex items-end justify-center gap-1">
-                  <span className="text-8xl font-bold text-white leading-none">{parsed.score}</span>
-                  <span className="text-3xl font-bold text-blue-200 mb-2">/10</span>
+            )}
+            {parsedResult.strengths.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg border-l-4 border-green-500 p-6">
+                <h3 className="text-xl font-bold text-green-700 mb-4">✅ Strengths</h3>
+                <div className="space-y-2">
+                  {parsedResult.strengths.map((item, i) => (
+                    <div key={i} className="bg-green-50 rounded-lg px-4 py-2 text-green-800 text-sm">{item}</div>
+                  ))}
                 </div>
               </div>
             )}
-
-            {/* Strengths */}
-            <SectionCard
-              icon={TrendingUp}
-              title="Strengths"
-              items={parsed.strengths}
-              delay={100}
-              colorClasses={{
-                border: "border-l-green-500",
-                iconBg: "bg-green-100",
-                iconText: "text-green-600",
-                heading: "text-green-700",
-                dot: "bg-green-500",
-              }}
-            />
-
-            {/* Improvements */}
-            <SectionCard
-              icon={AlertTriangle}
-              title="Improvements Needed"
-              items={parsed.improvements}
-              delay={200}
-              colorClasses={{
-                border: "border-l-orange-500",
-                iconBg: "bg-orange-100",
-                iconText: "text-orange-600",
-                heading: "text-orange-700",
-                dot: "bg-orange-500",
-              }}
-            />
-
-            {/* Missing Skills */}
-            <SectionCard
-              icon={AlertCircle}
-              title="Missing Skills"
-              items={parsed.missing}
-              delay={300}
-              colorClasses={{
-                border: "border-l-red-500",
-                iconBg: "bg-red-100",
-                iconText: "text-red-600",
-                heading: "text-red-700",
-                dot: "bg-red-500",
-              }}
-            />
-
-            {/* Recommendations */}
-            <SectionCard
-              icon={Lightbulb}
-              title="Recommendations"
-              items={parsed.recommendations}
-              delay={400}
-              colorClasses={{
-                border: "border-l-blue-500",
-                iconBg: "bg-blue-100",
-                iconText: "text-blue-600",
-                heading: "text-blue-700",
-                dot: "bg-blue-500",
-              }}
-            />
-
-            {/* Fallback: nothing parsed at all */}
-            {parsed.score === null &&
-              parsed.strengths.length === 0 &&
-              parsed.improvements.length === 0 &&
-              parsed.missing.length === 0 &&
-              parsed.recommendations.length === 0 && (
-                <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
-                  <div className="bg-slate-50 rounded-xl p-6 border border-slate-200 max-h-[600px] overflow-y-auto">
-                    <pre className="whitespace-pre-wrap font-sans text-slate-700 leading-relaxed text-sm">
-                      {result}
-                    </pre>
-                  </div>
+            {parsedResult.improvements.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg border-l-4 border-orange-500 p-6">
+                <h3 className="text-xl font-bold text-orange-700 mb-4">⚠️ Areas for Improvement</h3>
+                <div className="space-y-2">
+                  {parsedResult.improvements.map((item, i) => (
+                    <div key={i} className="bg-orange-50 rounded-lg px-4 py-2 text-orange-800 text-sm">{item}</div>
+                  ))}
                 </div>
+              </div>
+            )}
+            {parsedResult.missing.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg border-l-4 border-red-500 p-6">
+                <h3 className="text-xl font-bold text-red-700 mb-4">❌ Missing Skills</h3>
+                <div className="space-y-2">
+                  {parsedResult.missing.map((item, i) => (
+                    <div key={i} className="bg-red-50 rounded-lg px-4 py-2 text-red-800 text-sm">{item}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {parsedResult.recommendations.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-lg border-l-4 border-blue-500 p-6">
+                <h3 className="text-xl font-bold text-blue-700 mb-4">💡 Recommendations</h3>
+                <div className="space-y-2">
+                  {parsedResult.recommendations.map((item, i) => (
+                    <div key={i} className="bg-blue-50 rounded-lg px-4 py-2 text-blue-800 text-sm">{item}</div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

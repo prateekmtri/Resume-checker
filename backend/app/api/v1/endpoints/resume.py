@@ -11,6 +11,7 @@ import logging
 from app.core.security import SECRET_KEY, ALGORITHM
 from app.db.database import get_db
 from app.models.user import User
+from app.models.resume import Resume
 from app.services.resume_service import stream_resume_analysis
 
 router = APIRouter()
@@ -50,17 +51,47 @@ async def get_current_user(
 @router.post("/upload/stream")
 async def upload_resume_stream(
     file: UploadFile = File(...),
-    # current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     file_bytes = await file.read()
     return StreamingResponse(
-        stream_resume_analysis(file_bytes),
+        stream_resume_analysis(file_bytes, file.filename, current_user.id, db),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no"
         }
     )
+
+
+@router.get("/latest")
+async def get_latest_resume(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="No resume found")
+
+    return {
+        "filename": resume.filename,
+        "analysis": resume.analysis_text,
+        "uploaded_at": resume.uploaded_at,
+    }
+
+
+@router.delete("/")
+async def delete_resume(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
+    if resume:
+        db.delete(resume)
+        db.commit()
+
+    return {"message": "Resume deleted successfully"}
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):

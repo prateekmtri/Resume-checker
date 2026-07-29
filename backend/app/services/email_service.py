@@ -3,6 +3,8 @@ load_dotenv()
 
 from groq import Groq
 import os
+from sqlalchemy.orm import Session
+from app.models.email import GeneratedEmail
 from app.schemas.email import EmailRequest, EmailResponse
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -55,7 +57,7 @@ Make it natural, clear, and actionable."""
     return EmailResponse(email=email_content, subject=subject)
 
 
-async def stream_email_content(topic: str, tone: str, length: str):
+async def stream_email_content(topic: str, tone: str, length: str, user_id: int, db: Session):
     prompt = f"""Write a {tone} email about: {topic}
 
 Length: {length}
@@ -84,9 +86,30 @@ Make it natural, clear, and actionable."""
         stream=True,
     )
 
+    full_content = ""
+
     for chunk in stream:
         content = chunk.choices[0].delta.content
         if content:
+            full_content += content
             yield f"data: {content}\n\n"
+
+    existing_email = db.query(GeneratedEmail).filter(GeneratedEmail.user_id == user_id).first()
+    if existing_email:
+        existing_email.topic = topic
+        existing_email.tone = tone
+        existing_email.length = length
+        existing_email.content = full_content
+    else:
+        new_email = GeneratedEmail(
+            user_id=user_id,
+            topic=topic,
+            tone=tone,
+            length=length,
+            content=full_content,
+        )
+        db.add(new_email)
+
+    db.commit()
 
     yield "data: [DONE]\n\n"

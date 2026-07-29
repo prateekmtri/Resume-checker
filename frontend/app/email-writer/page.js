@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Send, Mail, Copy, CheckCircle, Sparkles } from 'lucide-react';
 
 export default function EmailWriter() {
@@ -10,6 +10,41 @@ export default function EmailWriter() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const loadExistingEmail = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/email/generate/latest`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.status === 404) {
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('Unable to load saved email');
+        }
+
+        const data = await response.json();
+        if (data.content) {
+          setTopic(data.topic || '');
+          setTone(data.tone || 'professional');
+          setLength(data.length || 'medium');
+          setResult({ subject: '', email: data.content });
+        }
+      } catch (error) {
+        console.error('Failed to load existing email:', error);
+      }
+    };
+
+    loadExistingEmail();
+  }, []);
 
 const generateEmail = async () => {
     if (!topic.trim()) {
@@ -22,10 +57,13 @@ const generateEmail = async () => {
     let streamedText = '';
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/email/generate/stream', {
+      const token = localStorage.getItem('token');
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/email/generate/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify({ topic, tone, length }),
       });

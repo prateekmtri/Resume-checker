@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
-from app.models import user
+from app.models import user, resume, email
 from app.api.v1.endpoints import resume, email
 from app.api import auth
 import logging
@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-user.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="JobAI API")
 
