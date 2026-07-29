@@ -11,7 +11,7 @@ export default function EmailWriter() {
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  const generateEmail = async () => {
+const generateEmail = async () => {
     if (!topic.trim()) {
       alert('Please enter a topic!');
       return;
@@ -19,9 +19,10 @@ export default function EmailWriter() {
 
     setLoading(true);
     setResult(null);
+    let streamedText = '';
 
     try {
-      const response = await fetch('https://resume-checker-zhh3.onrender.com/api/v1/email/generate', {
+      const response = await fetch('http://localhost:8000/api/v1/email/generate/stream', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -29,10 +30,28 @@ export default function EmailWriter() {
         body: JSON.stringify({ topic, tone, length }),
       });
 
-      const data = await response.json();
-      setResult(data);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      setLoading(false);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+            const text = line.replace('data: ', '');
+            streamedText += text;
+            setResult({ subject: '', email: streamedText });
+            await new Promise(resolve => setTimeout(resolve, 40));
+          }
+        }
+      }
     } catch (error) {
-      alert('Error generating email. Make sure backend is running!');
+      alert('Error generating email!');
       console.error(error);
     } finally {
       setLoading(false);

@@ -50,7 +50,7 @@ async def get_current_user(
 @router.post("/upload/stream")
 async def upload_resume_stream(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    # current_user: User = Depends(get_current_user)
 ):
     file_bytes = await file.read()
     return StreamingResponse(

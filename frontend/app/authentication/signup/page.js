@@ -23,7 +23,7 @@ export default function SignupPage() {
 
     try {
       // Backend API Call
-      const response = await fetch("https://resume-checker-zhh3.onrender.com/api/v1/auth/signup", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
