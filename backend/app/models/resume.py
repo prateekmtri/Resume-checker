@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.db.database import Base
 
-
+# Define the resume table used to store resume analysis results
 class Resume(Base):
     __tablename__ = "resumes"
 

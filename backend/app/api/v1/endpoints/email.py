@@ -1,3 +1,5 @@
+"""Email generation endpoints and user email history retrieval."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -14,6 +16,7 @@ router = APIRouter()
 
 @router.post("/generate", response_model=EmailResponse)
 async def generate_email(request: EmailRequest):
+    """Generate email text from the request payload."""
     try:
         result = await generate_email_content(request)
         return result
@@ -27,6 +30,7 @@ async def generate_email_stream(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Stream generated email content while saving it for the user."""
     return StreamingResponse(
         stream_email_content(request.topic, request.tone, request.length, current_user.id, db),
         media_type="text/event-stream"
@@ -38,6 +42,7 @@ async def get_latest_email(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Return the latest generated email for the authenticated user."""
     generated_email = db.query(GeneratedEmail).filter(GeneratedEmail.user_id == current_user.id).first()
     if not generated_email:
         raise HTTPException(status_code=404, detail="No email found")

@@ -1,8 +1,6 @@
-# app/services/resume_service.py
+"""Resume analysis and streaming service utilities."""
 
 import logging
-logger = logging.getLogger(__name__)
-
 import os
 import tempfile
 from dotenv import load_dotenv
@@ -14,11 +12,13 @@ from langchain_community.vectorstores import Chroma
 from sqlalchemy.orm import Session
 from app.models.resume import Resume
 
+logger = logging.getLogger(__name__)
 load_dotenv()
 groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 async def stream_resume_analysis(file_bytes: bytes, filename: str, user_id: int, db: Session):
+    """Stream resume analysis results and persist the output."""
     temp_path = None
     full_response = ""
 
@@ -105,45 +105,42 @@ Provide the analysis with these exact sections:
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
 
-# Don't use heavy models on free tier
+
 async def process_resume(file):
+    """Process an uploaded resume using a simple rule-based analysis."""
     try:
         logger.info(f"📄 Processing resume: {file.filename}")
-        
-        # Read file
+
         content = await file.read()
         text = content.decode('utf-8', errors='ignore')
-        
-        # Simple rule-based analysis (no ML)
+
         score = 7
-        
         strengths = []
         improvements = []
         missing = []
-        
-        # Basic checks
+
         if len(text) > 500:
             strengths.append("Good content length")
         else:
             improvements.append("Resume seems too short")
-            
+
         if "@" in text and "linkedin" in text.lower():
             strengths.append("Contact information included")
         else:
             missing.append("LinkedIn profile link")
-            
+
         if any(word in text.lower() for word in ["increased", "improved", "reduced", "achieved"]):
             strengths.append("Uses strong action verbs")
             score += 1
         else:
             improvements.append("Add more action verbs and quantifiable achievements")
-            
+
         if any(char.isdigit() for char in text):
             strengths.append("Includes quantifiable metrics")
         else:
             improvements.append("Add specific numbers and metrics")
             missing.append("Quantifiable achievements")
-        
+
         feedback = f"""OVERALL SCORE: {score}/10
 
 KEY STRENGTHS:
@@ -167,7 +164,7 @@ Your resume has a solid foundation. Focus on adding quantifiable achievements an
 
         logger.info(f"✅ Successfully processed: {file.filename}")
         return feedback
-        
+
     except Exception as e:
         logger.error(f"❌ Error: {str(e)}")
         raise

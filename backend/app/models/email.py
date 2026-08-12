@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from app.db.database import Base
 
-
+# Define the table used to store generated email content per user
 class GeneratedEmail(Base):
     __tablename__ = "generated_emails"
 

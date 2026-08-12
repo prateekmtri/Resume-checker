@@ -11,23 +11,31 @@ from langchain_core.runnables import RunnablePassthrough
 
 load_dotenv()
 
+
 def load_resume(path):
+    """Load a PDF resume from disk."""
     loader = PyPDFLoader(path)
     return loader.load()
 
+
 def split_docs(documents):
+    """Split loaded documents into smaller chunks."""
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=150
     )
     return splitter.split_documents(documents)
 
+
 def create_embeddings():
+    """Create the embedding model instance."""
     return HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
+
 def store_documents(chunks, embeddings):
+    """Persist document embeddings to the Chroma vector store."""
     vectordb = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
@@ -36,6 +44,7 @@ def store_documents(chunks, embeddings):
     return vectordb
 
 def analyze_resume(query, vectordb):
+    """Run resume analysis using retrieval-augmented generation."""
     retriever = vectordb.as_retriever(search_kwargs={"k": 6})
 
     llm = ChatGroq(

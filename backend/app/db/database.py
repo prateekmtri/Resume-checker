@@ -7,7 +7,6 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-# Use PostgreSQL when DATABASE_URL is set, otherwise fall back to SQLite for local dev
 DATABASE_URL = os.getenv("DATABASE_URL") or "sqlite:///./jobai.db"
 
 engine_kwargs = {}
@@ -19,7 +18,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# Ye function har request ke liye DB session dega
+# Provide a database session for each request and close it after the request
 def get_db():
     db = SessionLocal()
     try:
