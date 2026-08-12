@@ -1,3 +1,5 @@
+"""Email generation services using the Groq API."""
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -9,7 +11,9 @@ from app.schemas.email import EmailRequest, EmailResponse
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+
 async def generate_email_content(request: EmailRequest):
+    """Build an email subject and body from the request data."""
     prompt = f"""Write a {request.tone} email about: {request.topic}
 
 Length: {request.length}
@@ -38,26 +42,25 @@ Make it natural, clear, and actionable."""
     )
 
     response_text = chat_completion.choices[0].message.content
-    
     lines = response_text.split('\n')
     subject = ""
     email_body = []
-    
+
     for line in lines:
         if line.startswith("Subject:"):
             subject = line.replace("Subject:", "").strip()
         else:
             email_body.append(line)
-    
+
     email_content = '\n'.join(email_body).strip()
-    
     if not subject:
         subject = "Your Email Subject"
-    
+
     return EmailResponse(email=email_content, subject=subject)
 
 
 async def stream_email_content(topic: str, tone: str, length: str, user_id: int, db: Session):
+    """Stream generated email content and persist it for the user."""
     prompt = f"""Write a {tone} email about: {topic}
 
 Length: {length}
@@ -87,7 +90,6 @@ Make it natural, clear, and actionable."""
     )
 
     full_content = ""
-
     for chunk in stream:
         content = chunk.choices[0].delta.content
         if content:
@@ -111,5 +113,4 @@ Make it natural, clear, and actionable."""
         db.add(new_email)
 
     db.commit()
-
     yield "data: [DONE]\n\n"

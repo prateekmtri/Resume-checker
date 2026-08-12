@@ -1,9 +1,10 @@
 # app/api/v1/endpoints/resume.py
 
+"""Resume endpoints and authentication utilities."""
+
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi import Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -18,11 +19,11 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 bearer_scheme = HTTPBearer()
 
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db)
 ):
+    """Return the authenticated user from the bearer token."""
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
@@ -54,6 +55,7 @@ async def upload_resume_stream(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Upload a resume and stream analysis results."""
     file_bytes = await file.read()
     return StreamingResponse(
         stream_resume_analysis(file_bytes, file.filename, current_user.id, db),
@@ -70,6 +72,7 @@ async def get_latest_resume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Return the authenticated user's latest resume analysis."""
     resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
     if not resume:
         raise HTTPException(status_code=404, detail="No resume found")
@@ -86,6 +89,7 @@ async def delete_resume(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Delete the authenticated user's resume record."""
     resume = db.query(Resume).filter(Resume.user_id == current_user.id).first()
     if resume:
         db.delete(resume)
@@ -93,20 +97,19 @@ async def delete_resume(
 
     return {"message": "Resume deleted successfully"}
 
+
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):
+    """Accept an uploaded resume and return mock feedback."""
     try:
         logger.info(f"📄 Received file: {file.filename}")
-        
-        # Validate file
-        if not file.filename.endswith(('.pdf', '.txt')):
+
+        if not file.filename.endswith((".pdf", ".txt")):
             raise HTTPException(status_code=400, detail="Only PDF and TXT files allowed")
-        
-        # Read file content
+
         content = await file.read()
         logger.info(f"📦 File size: {len(content)} bytes")
-        
-        # MOCK RESPONSE - No AI processing (fast!)
+
         feedback = f"""OVERALL SCORE: 8/10
 
 KEY STRENGTHS:
@@ -138,12 +141,11 @@ FINAL VERDICT:
 Your resume ({file.filename}) demonstrates a solid foundation with clear structure and relevant content. To make it truly stand out, focus on adding quantifiable achievements and measurable impact. Including professional links and certifications will further strengthen your candidacy. Overall, with these improvements, your resume will be highly competitive."""
 
         logger.info(f"✅ Successfully processed: {file.filename}")
-        
         return JSONResponse(
             status_code=200,
             content={"feedback": feedback, "filename": file.filename}
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
