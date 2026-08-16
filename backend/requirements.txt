@@ -9,6 +9,7 @@ langchain
 langchain-community
 langchain-groq
 langchain-huggingface
+langgraph
 sentence-transformers
 chromadb
 pypdf
