@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 # Base schema
 class UserBase(BaseModel):
@@ -18,10 +19,12 @@ class UserResponse(UserBase):
     id: int
     full_name: str
     is_active: bool
+    profile_picture:  Optional[str] = None
 
     class Config:
         from_attributes = True
-
+        
+            
 # Token ka schema
 class Token(BaseModel):
     access_token: str
