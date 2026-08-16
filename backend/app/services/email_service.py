@@ -1,15 +1,20 @@
 """Email generation services using the Groq API."""
 
-from dotenv import load_dotenv
-load_dotenv()
-
-from groq import Groq
+import logging
 import os
+
+from dotenv import load_dotenv
+from groq import Groq
 from sqlalchemy.orm import Session
+
+from app.graphs.email_graph import build_email_graph
 from app.models.email import GeneratedEmail
 from app.schemas.email import EmailRequest, EmailResponse
 
+load_dotenv()
+
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+logger = logging.getLogger(__name__)
 
 
 async def generate_email_content(request: EmailRequest):
@@ -60,57 +65,47 @@ Make it natural, clear, and actionable."""
 
 
 async def stream_email_content(topic: str, tone: str, length: str, user_id: int, db: Session):
-    """Stream generated email content and persist it for the user."""
-    prompt = f"""Write a {tone} email about: {topic}
+    """Invoke the email graph, stream the final text to the client, and persist it."""
+    graph = build_email_graph()
+    state = {
+        "topic": topic,
+        "tone": tone,
+        "length": length,
+        "result": "",
+    }
 
-Length: {length}
-Tone: {tone}
+    try:
+        final_state = graph.invoke(state)
+        full_content = final_state.get("result") or ""
 
-Generate:
-1. Subject line (start with "Subject:")
-2. Email body (professional format with greeting, body, closing)
+        if not full_content:
+            full_content = "Unable to generate email content."
 
-Make it natural, clear, and actionable."""
+        for chunk in full_content.split(" "):
+            if not chunk:
+                continue
+            yield f"data: {chunk} \n\n"
 
-    stream = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an expert email writer. Write professional, clear, and effective emails."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        model="llama-3.3-70b-versatile",
-        temperature=0.7,
-        max_tokens=1024,
-        stream=True,
-    )
+        existing_email = db.query(GeneratedEmail).filter(GeneratedEmail.user_id == user_id).first()
+        if existing_email:
+            existing_email.topic = topic
+            existing_email.tone = tone
+            existing_email.length = length
+            existing_email.content = full_content
+        else:
+            new_email = GeneratedEmail(
+                user_id=user_id,
+                topic=topic,
+                tone=tone,
+                length=length,
+                content=full_content,
+            )
+            db.add(new_email)
 
-    full_content = ""
-    for chunk in stream:
-        content = chunk.choices[0].delta.content
-        if content:
-            full_content += content
-            yield f"data: {content}\n\n"
+        db.commit()
+        yield "data: [DONE]\n\n"
 
-    existing_email = db.query(GeneratedEmail).filter(GeneratedEmail.user_id == user_id).first()
-    if existing_email:
-        existing_email.topic = topic
-        existing_email.tone = tone
-        existing_email.length = length
-        existing_email.content = full_content
-    else:
-        new_email = GeneratedEmail(
-            user_id=user_id,
-            topic=topic,
-            tone=tone,
-            length=length,
-            content=full_content,
-        )
-        db.add(new_email)
-
-    db.commit()
-    yield "data: [DONE]\n\n"
+    except Exception as e:
+        logger.error(f"Streaming email generation error: {str(e)}")
+        yield f"data: Error: {str(e)}\n\n"
+        yield "data: [DONE]\n\n"
