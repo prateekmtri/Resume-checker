@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
 from app.models import user, resume, email
 from app.api.v1.endpoints import resume, email, users, interview_prep
+from app.api.v1.endpoints import voice
 from app.api import auth
 import logging
 
@@ -45,6 +46,7 @@ app.include_router(resume.router, prefix="/api/v1/resume", tags=["Resume"])
 app.include_router(email.router, prefix="/api/v1/email", tags=["Email"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["User"])
 app.include_router(interview_prep.router, prefix="/api/v1/interview-prep", tags=["Interview Prep"])
+app.include_router(voice.router, prefix="/api/v1/voice", tags=["Voice Bot"])
 
 @app.get("/")
 def read_root():
