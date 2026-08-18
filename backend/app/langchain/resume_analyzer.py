@@ -49,7 +49,7 @@ def analyze_resume(query, vectordb):
 
     llm = ChatGroq(
         groq_api_key=os.getenv("GROQ_API_KEY"),
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         temperature=0.7
     )
 

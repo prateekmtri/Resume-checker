@@ -52,7 +52,7 @@ about this role and company type. Provide a clear, structured list."""
             {"role": "system", "content": "You are a knowledgeable technical recruiter."},
             {"role": "user", "content": prompt},
         ],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         temperature=0.7,
         max_tokens=512,
     )
@@ -85,7 +85,7 @@ List clearly:
             {"role": "system", "content": "You are an expert career coach analyzing skill gaps."},
             {"role": "user", "content": prompt},
         ],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         temperature=0.7,
         max_tokens=512,
     )
@@ -118,7 +118,7 @@ Skill Gap Analysis:
             {"role": "system", "content": "You are an expert technical interviewer."},
             {"role": "user", "content": prompt},
         ],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         temperature=0.7,
         max_tokens=1024,
     )
@@ -147,7 +147,7 @@ Include a subject line and a concise, compelling email body."""
             {"role": "system", "content": "You are an expert career coach writing application emails."},
             {"role": "user", "content": prompt},
         ],
-        model="llama-3.3-70b-versatile",
+        model="openai/gpt-oss-120b",
         temperature=0.7,
         max_tokens=512,
     )

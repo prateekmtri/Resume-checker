@@ -1,5 +1,6 @@
 import "./globals.css";
 import Navbar from "./components/Navbar";
+import VoiceBot from "./components/VoiceBot";
 
 export const metadata = {
   title: "AI Productivity Tools",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
       <body className="bg-gray-50 text-gray-900">
         <Navbar />
         <main>{children}</main>
+        <VoiceBot />
       </body>
     </html>
   );
