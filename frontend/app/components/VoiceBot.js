@@ -1,16 +1,25 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 
 const VOICE_API_URL =
   (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1") + "/voice/chat";
 
 export default function VoiceBot() {
+  const pathname = usePathname();
+  const [authenticated, setAuthenticated] = useState(false);
   const [listening, setListening] = useState(false);
   const [loading, setLoading] = useState(false);
   const recognitionRef = useRef(null);
   const sessionIdRef = useRef(null);
+
+  useEffect(() => {
+    const isAuthenticationPage =
+      pathname === "/authentication/Login" || pathname === "/authentication/signup";
+    setAuthenticated(!isAuthenticationPage && Boolean(localStorage.getItem("token")));
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -75,6 +84,8 @@ export default function VoiceBot() {
       setListening(true);
     }
   };
+
+  if (!authenticated) return null;
 
   return (
     <button
